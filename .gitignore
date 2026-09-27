@@ -1,0 +1,10 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# Each app (backend/, mobile/, web/) has its own .gitignore for its own
+# node_modules, build output, and .env files.

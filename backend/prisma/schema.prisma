@@ -1,0 +1,492 @@
+// GymRecover data model.
+// NOTE: several fields hold sensitive health data (InjuryProfile, OutcomeAssessment answers).
+// These are encrypted at the application layer before being persisted here — see
+// src/common/encryption/encryption.service.ts. Column type stays `String`/`Json` because the
+// stored value is ciphertext, not plaintext.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  MEMBER
+  PROVIDER
+  ORG_ADMIN
+  SUPER_ADMIN
+}
+
+enum InjuryRegion {
+  KNEE
+  SHOULDER
+  HIP
+  ANKLE_FOOT
+  SPINE
+  ELBOW_WRIST
+  GENERAL_MUSCLE
+}
+
+enum Side {
+  LEFT
+  RIGHT
+  BILATERAL
+  NA
+}
+
+enum ClearanceStatus {
+  SELF_REPORTED
+  PROVIDER_CONFIRMED
+  PENDING
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  ATHLETE
+}
+
+enum ProgramTrack {
+  RECOVERY
+  PERFORMANCE
+}
+
+enum PerformanceGoal {
+  STRENGTH
+  HYPERTROPHY
+  CONDITIONING
+}
+
+enum ProgramInstanceStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  GRADUATED
+  ABANDONED
+}
+
+enum PromType {
+  KOOS
+  QUICKDASH
+}
+
+enum OrganizationType {
+  GYM
+  CLINIC
+  HYBRID
+}
+
+enum SubscriptionPlan {
+  FREE
+  TRIAL
+  BASIC
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+// ---------- Core entities ----------
+
+model Organization {
+  id           String            @id @default(uuid())
+  name         String
+  type         OrganizationType  @default(GYM)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  users         User[]
+  subscription  Subscription?
+  providerAssignments ProviderAssignment[]
+  invites       OrgInvite[]
+
+  @@map("organizations")
+}
+
+enum OrgInviteRole {
+  PROVIDER
+  MEMBER
+}
+
+enum OrgInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+// Build order item 10: invite providers/members under an org. No real email delivery is
+// configured (Postmark isn't set up — same gap noted for push notifications in milestone 4), so
+// accepting an invite is a token the invited person enters themselves after signing in, rather
+// than a clicked email link. See OrgInvitesService for the honest "would send email" log line.
+model OrgInvite {
+  id             String          @id @default(uuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           OrgInviteRole
+  token          String          @unique
+  status         OrgInviteStatus @default(PENDING)
+  invitedByUserId String
+  invitedBy      User            @relation("InvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  acceptedAt     DateTime?
+
+  @@index([organizationId])
+  @@map("org_invites")
+}
+
+model Subscription {
+  id                 String              @id @default(uuid())
+  organizationId     String              @unique
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan               SubscriptionPlan    @default(TRIAL)
+  status             SubscriptionStatus  @default(TRIALING)
+  seats              Int                 @default(1)
+  // Stub only — no real payment processor is integrated yet (see build order item 10).
+  stripeCustomerId   String?
+  currentPeriodEnd   DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@map("subscriptions")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  // Subject id from the identity provider (Auth0 `sub`). Never store passwords here.
+  authSubjectId  String   @unique
+  email          String   @unique
+  role           Role     @default(MEMBER)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  profile             Profile?
+  injuryProfiles      InjuryProfile[]
+  programInstances    ProgramInstance[]
+  sessionLogs         SessionLog[]
+  outcomeAssessments  OutcomeAssessment[]
+
+  providerFor ProviderAssignment[] @relation("ProviderAssignments")
+  patientOf   ProviderAssignment[] @relation("PatientAssignments")
+
+  auditLogsAsActor  AuditLog[] @relation("AuditActor")
+  auditLogsAsTarget AuditLog[] @relation("AuditTarget")
+
+  invitesSent OrgInvite[] @relation("InvitedBy")
+
+  @@map("users")
+}
+
+model Profile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName      String
+  lastName       String
+  dateOfBirth    DateTime?
+  goals          String?
+  activityLevel  ActivityLevel  @default(MODERATE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("profiles")
+}
+
+// One user may carry more than one injury profile over time (e.g. left knee ACL in 2025,
+// right shoulder in 2026); `ProgramInstance` ties a specific injury profile to a protocol run.
+model InjuryProfile {
+  id                String           @id @default(uuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  region            InjuryRegion
+  // Sensitive free-text diagnosis, encrypted at rest at the application layer.
+  diagnosisText     String?
+  // Coarse category kept alongside the free text so the engine/UI can filter without decrypting.
+  diagnosisCategory String?
+  surgeryType       String?
+  surgeryDate       DateTime?
+  side              Side             @default(NA)
+  clearanceStatus   ClearanceStatus  @default(SELF_REPORTED)
+  // Denormalized pointer to the phase the user is currently on for this injury, kept in sync
+  // by the Adaptive Program Engine whenever the linked ProgramInstance advances phases.
+  currentPhaseId    String?
+  currentPhase      Phase?           @relation(fields: [currentPhaseId], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  programInstances ProgramInstance[]
+
+  @@index([userId])
+  @@map("injury_profiles")
+}
+
+// A clinically-authored rehab pathway for a region/surgery combination.
+// PLACEHOLDER CONTENT ONLY until reviewedBy / sourceCitation are filled in by a licensed clinician.
+model ProtocolTemplate {
+  id              String        @id @default(uuid())
+  name            String        @unique
+  region          InjuryRegion
+  description     String?
+  // Must never be fabricated — placeholder templates are seeded with an explicit marker.
+  reviewedBy      String        @default("PLACEHOLDER - requires licensed clinical review")
+  sourceCitation  String?
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  phases           Phase[]
+  programInstances ProgramInstance[]
+
+  @@map("protocol_templates")
+}
+
+model Phase {
+  id                 String            @id @default(uuid())
+  protocolTemplateId String
+  protocolTemplate   ProtocolTemplate  @relation(fields: [protocolTemplateId], references: [id], onDelete: Cascade)
+  order              Int
+  name               String
+  description        String?
+  // Rule sets evaluated by the Adaptive Program Engine, e.g.
+  // {"min_days_since_surgery": 14, "max_pain_score": 3, "no_swelling_increase_24h": true, "provider_hold": false}
+  entryCriteria      Json
+  exitCriteria       Json
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  phaseExercises        PhaseExercise[]
+  injuryProfiles        InjuryProfile[]
+  programInstances      ProgramInstance[]
+  pendingForInstances   ProgramInstance[] @relation("PendingPhase")
+
+  @@unique([protocolTemplateId, order])
+  @@map("phases")
+}
+
+model Exercise {
+  id            String         @id @default(uuid())
+  name          String         @unique
+  description   String?
+  region        InjuryRegion?
+  equipment     String?
+  // S3-compatible object storage keys/URLs for demo media.
+  videoUrl      String?
+  imageUrl      String?
+  thumbnailUrl  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  phaseExercises             PhaseExercise[]
+  performanceProgramExercises PerformanceProgramExercise[]
+
+  @@map("exercises")
+}
+
+// Per-phase exercise prescription (join table with prescription detail).
+model PhaseExercise {
+  id              String    @id @default(uuid())
+  phaseId         String
+  phase           Phase     @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  exerciseId      String
+  exercise        Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  order           Int
+  sets            Int?
+  reps            Int?
+  holdTimeSeconds Int?
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([phaseId, exerciseId])
+  @@map("phase_exercises")
+}
+
+// General fitness track (build order item 9) — deliberately separate from ProtocolTemplate/Phase,
+// which are the injury-specific recovery-gating structures. A performance program is just a
+// templated exercise list by goal; it has no phases, no entry/exit criteria, and the Adaptive
+// Program Engine never touches it.
+model PerformanceProgramTemplate {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  goal        PerformanceGoal
+  description String?
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  exercises        PerformanceProgramExercise[]
+  programInstances ProgramInstance[]
+
+  @@map("performance_program_templates")
+}
+
+model PerformanceProgramExercise {
+  id         String                      @id @default(uuid())
+  templateId String
+  template   PerformanceProgramTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise                    @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  order      Int
+  sets       Int?
+  reps       Int?
+  holdTimeSeconds Int?
+  notes      String?
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+
+  @@unique([templateId, exerciseId])
+  @@map("performance_program_exercises")
+}
+
+// A user's live run through either a recovery protocol or a performance program.
+model ProgramInstance {
+  id             String                 @id @default(uuid())
+  userId         String
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track          ProgramTrack
+  status         ProgramInstanceStatus  @default(ACTIVE)
+
+  // --- Recovery track fields ---
+  injuryProfileId    String?
+  injuryProfile      InjuryProfile?     @relation(fields: [injuryProfileId], references: [id], onDelete: SetNull)
+  protocolTemplateId String?
+  protocolTemplate   ProtocolTemplate?  @relation(fields: [protocolTemplateId], references: [id], onDelete: Restrict)
+  currentPhaseId     String?
+  currentPhase       Phase?             @relation(fields: [currentPhaseId], references: [id], onDelete: SetNull)
+  // Provider-placed hold that blocks automatic advancement regardless of criteria (milestone 8).
+  manualHold         Boolean            @default(false)
+  manualHoldReason   String?
+
+  // --- Adaptive Program Engine phase-advancement prompt (milestone 5) ---
+  // The engine never changes currentPhaseId by itself. Once exit criteria are met, it records the
+  // candidate next phase here and waits for explicit acknowledgment(s); acknowledging is what
+  // actually moves currentPhaseId forward (see ProgramEngineService.acknowledge).
+  pendingPhaseId         String?
+  pendingPhase           Phase?    @relation("PendingPhase", fields: [pendingPhaseId], references: [id], onDelete: SetNull)
+  eligibleSince          DateTime?
+  userAcknowledgedAt     DateTime?
+  providerAcknowledgedAt DateTime?
+
+  // --- Performance track fields ---
+  performanceGoal            PerformanceGoal?
+  performanceProgramTemplateId String?
+  performanceProgramTemplate   PerformanceProgramTemplate? @relation(fields: [performanceProgramTemplateId], references: [id], onDelete: SetNull)
+
+  // Links a performance-track instance back to the recovery instance it graduated from
+  // (build order item 9's "graduate" action).
+  graduatedFromId String?           @unique
+  graduatedFrom   ProgramInstance?  @relation("Graduation", fields: [graduatedFromId], references: [id], onDelete: SetNull)
+  graduatedTo     ProgramInstance?  @relation("Graduation")
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessionLogs        SessionLog[]
+  outcomeAssessments OutcomeAssessment[]
+
+  @@index([userId])
+  @@map("program_instances")
+}
+
+model SessionLog {
+  id                String           @id @default(uuid())
+  programInstanceId String
+  programInstance   ProgramInstance  @relation(fields: [programInstanceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  scheduledDate DateTime?
+  completedAt   DateTime?
+  completed     Boolean   @default(false)
+
+  // Per-exercise completion detail: [{ phaseExerciseId, setsCompleted, repsCompleted, holdSeconds }]
+  exerciseResults Json?
+
+  // 0-10 self-reported pain score logged for this session.
+  painScore Int?
+  // Rate of perceived exertion, 1-10.
+  rpe       Int?
+  notes     String?
+
+  // Red-flag triage gate (build order item 4). If true, the session was blocked and the
+  // checked symptoms are recorded in redFlagDetails; a provider notification is triggered
+  // at the service layer when a provider is assigned.
+  redFlagTriggered Boolean  @default(false)
+  redFlagDetails   Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([programInstanceId])
+  @@index([userId])
+  @@map("session_logs")
+}
+
+model OutcomeAssessment {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programInstanceId String?
+  programInstance   ProgramInstance?  @relation(fields: [programInstanceId], references: [id], onDelete: SetNull)
+
+  type        PromType
+  // Encrypted at the application layer (ciphertext string, not queryable JSON) — raw
+  // questionnaire answers are sensitive health data.
+  rawAnswers  String
+  score       Float
+  assessedAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@map("outcome_assessments")
+}
+
+model ProviderAssignment {
+  id             String        @id @default(uuid())
+  providerId     String
+  provider       User          @relation("ProviderAssignments", fields: [providerId], references: [id], onDelete: Cascade)
+  patientId      String
+  patient        User          @relation("PatientAssignments", fields: [patientId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  active         Boolean       @default(true)
+  assignedAt     DateTime      @default(now())
+  endedAt        DateTime?
+
+  // Not a hard unique constraint: a provider can be reassigned to the same patient after an
+  // earlier assignment ended (active: false). "Only one active assignment per pair" is enforced
+  // at the application layer, where reactivation of a lapsed assignment can be handled properly.
+  @@index([providerId, patientId])
+  @@map("provider_assignments")
+}
+
+// Non-functional requirement: audit logging for provider access to patient data.
+model AuditLog {
+  id           String    @id @default(uuid())
+  actorUserId  String
+  actor        User      @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  targetUserId String?
+  target       User?     @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  action       String
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@map("audit_logs")
+}
