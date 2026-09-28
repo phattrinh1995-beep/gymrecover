@@ -37,8 +37,8 @@ export default function ClearanceScreen() {
         />
       ))}
       <Text style={styles.footnote}>
-        If you haven't been cleared yet, you can still create your account — recovery exercises just
-        won't be shown until clearance is confirmed.
+        If you haven&apos;t been cleared yet, you can still create your account — recovery exercises just
+        won&apos;t be shown until clearance is confirmed.
       </Text>
     </SafeAreaView>
   );

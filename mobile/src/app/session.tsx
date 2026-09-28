@@ -135,7 +135,7 @@ export default function SessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.body}>Could not load today's session. Please check your connection and try again.</Text>
+          <Text style={styles.body}>Could not load today&apos;s session. Please check your connection and try again.</Text>
           <PrimaryButton label="Back to Home" onPress={() => router.replace('/home')} />
         </View>
       </SafeAreaView>
@@ -164,7 +164,7 @@ export default function SessionScreen() {
               {eligibility.eligible && status && !status.userAcknowledgedAt && (
                 <>
                   <Text style={styles.cardBody}>
-                    This won't change your program automatically.{' '}
+                    This won&apos;t change your program automatically.{' '}
                     {status.providerRequired
                       ? 'Confirm below — your assigned provider will also need to confirm before your phase actually changes.'
                       : 'Confirm below to move to the next phase.'}

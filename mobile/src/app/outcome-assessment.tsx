@@ -65,7 +65,7 @@ export default function OutcomeAssessmentScreen() {
       <SafeAreaView style={styles.container}>
         <Text style={styles.title}>No questionnaire available</Text>
         <Text style={styles.body}>
-          A standardized outcome measure isn't configured for this injury's region yet.
+          A standardized outcome measure isn&apos;t configured for this injury&apos;s region yet.
         </Text>
         <PrimaryButton label="Back to Home" onPress={() => router.replace('/home')} />
       </SafeAreaView>

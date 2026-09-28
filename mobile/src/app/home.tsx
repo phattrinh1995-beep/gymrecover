@@ -19,17 +19,21 @@ export default function HomeScreen() {
   const [loadError, setLoadError] = useState(false);
   const [startingWorkout, setStartingWorkout] = useState(false);
 
-  const loadMe = () => {
+  const fetchMe = () => {
     if (!user) return;
-    setLoading(true);
-    setLoadError(false);
     apiFetch<MeResponse>(user, '/users/me')
       .then(setMe)
       .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadMe, [user]);
+  useEffect(fetchMe, [user]);
+
+  const retry = () => {
+    setLoading(true);
+    setLoadError(false);
+    fetchMe();
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -62,7 +66,7 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={styles.body}>Could not load your account. Please check your connection and try again.</Text>
-        <PrimaryButton label="Retry" onPress={loadMe} />
+        <PrimaryButton label="Retry" onPress={retry} />
         <Text style={styles.logout} onPress={handleLogout}>
           Log out (dev)
         </Text>
@@ -96,8 +100,8 @@ export default function HomeScreen() {
         ) : (
           <>
             <Text style={styles.body}>
-              Your recovery track is set up. Today's session runs the red-flag safety check first,
-              then your prescribed exercises, then checks whether you're ready for the next phase.
+              Your recovery track is set up. Today&apos;s session runs the red-flag safety check first,
+              then your prescribed exercises, then checks whether you&apos;re ready for the next phase.
             </Text>
             {canStartRecoverySession && (
               <PrimaryButton

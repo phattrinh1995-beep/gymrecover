@@ -11,7 +11,7 @@ export function Disclaimer() {
     <View style={styles.container}>
       <Text style={styles.text}>
         This app provides general exercise guidance and does not replace medical advice. Follow your
-        clinician's instructions and stop if you experience {RED_FLAG_LIST}.
+        clinician&apos;s instructions and stop if you experience {RED_FLAG_LIST}.
       </Text>
     </View>
   );

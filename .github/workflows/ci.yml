@@ -12,6 +12,11 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # No database is provisioned in CI — the unit test suite doesn't touch Prisma/Postgres
+      # directly, but prisma.config.ts requires DATABASE_URL to be set just to load, even for
+      # `prisma generate` (which doesn't connect to it).
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
