@@ -13,11 +13,25 @@ const CHART_HEIGHT = 140;
 export default function OutcomeTrendScreen() {
   const { user } = useAuth();
   const [assessments, setAssessments] = useState<OutcomeAssessmentSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
-    apiFetch<OutcomeAssessmentSummary[]>(user, '/outcome-assessments').then(setAssessments);
+    apiFetch<OutcomeAssessmentSummary[]>(user, '/outcome-assessments')
+      .then(setAssessments)
+      .catch(() => setError('Could not load your progress. Please try again.'));
   }, [user]);
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.body}>{error}</Text>
+          <PrimaryButton label="Back to Home" onPress={() => router.replace('/home')} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!assessments) {
     return (

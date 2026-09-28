@@ -7,10 +7,13 @@ import type { PatientSummary } from '../types';
 export function PatientsListPage() {
   const { user, logout } = useAuth();
   const [patients, setPatients] = useState<PatientSummary[] | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    apiFetch<PatientSummary[]>(user, '/provider/patients').then(setPatients);
+    apiFetch<PatientSummary[]>(user, '/provider/patients')
+      .then(setPatients)
+      .catch(() => setError(true));
   }, [user]);
 
   return (
@@ -30,7 +33,8 @@ export function PatientsListPage() {
         </div>
       </header>
 
-      {!patients && <p>Loading…</p>}
+      {error && <p className="error">Could not load your patients. Please refresh the page.</p>}
+      {!patients && !error && <p>Loading…</p>}
       {patients && patients.length === 0 && (
         <p className="muted">
           No patients are assigned to you yet. Provider/patient assignment (invites) is build order

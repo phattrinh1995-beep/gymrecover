@@ -17,8 +17,14 @@ export function PatientDetailPage() {
 
   const load = () => {
     if (!user || !patientId) return;
-    apiFetch<PatientDetail>(user, `/provider/patients/${patientId}`).then(setPatient);
-    apiFetch<RedFlagAlert[]>(user, `/provider/patients/${patientId}/red-flag-alerts`).then(setAlerts);
+    apiFetch<PatientDetail>(user, `/provider/patients/${patientId}`)
+      .then(setPatient)
+      .catch(() => setError('Could not load this patient. Please refresh the page.'));
+    apiFetch<RedFlagAlert[]>(user, `/provider/patients/${patientId}/red-flag-alerts`)
+      .then(setAlerts)
+      .catch(() => {
+        /* Non-critical for the initial render — the main patient load error above covers it. */
+      });
   };
 
   useEffect(load, [user, patientId]);
@@ -66,7 +72,13 @@ export function PatientDetailPage() {
       apiFetch(user!, `/program-engine/instances/${instance!.id}/acknowledge`, { method: 'POST' }),
     );
 
-  if (!patient) return <div className="page">Loading…</div>;
+  if (!patient) {
+    return (
+      <div className="page">
+        {error ? <p className="error">{error}</p> : <p>Loading…</p>}
+      </div>
+    );
+  }
 
   const injury = patient.injuryProfiles[0];
   const phases = instance?.currentPhase?.protocolTemplate.phases ?? [];

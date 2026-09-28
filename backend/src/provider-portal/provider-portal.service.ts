@@ -35,32 +35,38 @@ export class ProviderPortalService {
     });
 
     const since = new Date(Date.now() - SEVEN_DAYS_MS);
-    return Promise.all(
-      assignments.map(async ({ patient }) => {
-        const instance = patient.programInstances[0];
-        const painTrend = instance ? recentPainTrend(instance.sessionLogs, 1) : [];
-        // Queried by patient, not nested under the ProgramInstance relation: an OutcomeAssessment
-        // isn't required to be linked to a specific instance (the mobile submission flow doesn't
-        // always pass one), so nesting under programInstances.outcomeAssessments would silently
-        // miss assessments — the same gap the trend chart avoids by querying this way too.
-        const latestAssessment = await this.prisma.outcomeAssessment.findFirst({
-          where: { userId: patient.id },
+    const patientIds = assignments.map((a) => a.patient.id);
+
+    // One query for the latest OutcomeAssessment per patient, instead of one query per patient
+    // (Prisma's `distinct` + `orderBy` compiles to Postgres `DISTINCT ON`, which is exactly
+    // "first row per userId" in a single round trip). Queried by patient rather than nested under
+    // ProgramInstance for the same reason noted in getPatientDetail below: an OutcomeAssessment
+    // isn't required to be linked to a specific instance.
+    const latestAssessments = patientIds.length
+      ? await this.prisma.outcomeAssessment.findMany({
+          where: { userId: { in: patientIds } },
           orderBy: { assessedAt: 'desc' },
-          select: { score: true },
-        });
-        return {
-          patientId: patient.id,
-          name: patient.profile ? `${patient.profile.firstName} ${patient.profile.lastName}` : patient.email,
-          region: patient.injuryProfiles[0]?.region ?? null,
-          currentPhaseName: instance?.currentPhase?.name ?? null,
-          manualHold: instance?.manualHold ?? false,
-          pendingPhaseId: instance?.pendingPhaseId ?? null,
-          sessionsThisWeek: instance ? countCompletedSessionsSince(instance.sessionLogs, since) : 0,
-          latestPainScore: painTrend[0] ?? null,
-          latestPromScore: latestAssessment?.score ?? null,
-        };
-      }),
-    );
+          distinct: ['userId'],
+          select: { userId: true, score: true },
+        })
+      : [];
+    const latestScoreByPatientId = new Map(latestAssessments.map((a) => [a.userId, a.score]));
+
+    return assignments.map(({ patient }) => {
+      const instance = patient.programInstances[0];
+      const painTrend = instance ? recentPainTrend(instance.sessionLogs, 1) : [];
+      return {
+        patientId: patient.id,
+        name: patient.profile ? `${patient.profile.firstName} ${patient.profile.lastName}` : patient.email,
+        region: patient.injuryProfiles[0]?.region ?? null,
+        currentPhaseName: instance?.currentPhase?.name ?? null,
+        manualHold: instance?.manualHold ?? false,
+        pendingPhaseId: instance?.pendingPhaseId ?? null,
+        sessionsThisWeek: instance ? countCompletedSessionsSince(instance.sessionLogs, since) : 0,
+        latestPainScore: painTrend[0] ?? null,
+        latestPromScore: latestScoreByPatientId.get(patient.id) ?? null,
+      };
+    });
   }
 
   async getPatientDetail(providerId: string, patientId: string) {

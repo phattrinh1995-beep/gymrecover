@@ -434,6 +434,10 @@ model SessionLog {
 
   @@index([programInstanceId])
   @@index([userId])
+  // Supports the Adaptive Program Engine's "any swelling reported in the last 24h" check
+  // (WHERE userId = ? AND createdAt >= ?) and the provider portal's "recent sessions" ordering
+  // (WHERE userId = ? ORDER BY createdAt DESC) without a full index scan as this table grows.
+  @@index([userId, createdAt])
   @@map("session_logs")
 }
 
@@ -452,7 +456,9 @@ model OutcomeAssessment {
   assessedAt  DateTime  @default(now())
   createdAt   DateTime  @default(now())
 
-  @@index([userId])
+  // Composite covers both the trend chart's own-history query and the provider portal's
+  // "latest score per patient" DISTINCT ON (userId) ORDER BY assessedAt DESC query.
+  @@index([userId, assessedAt])
   @@map("outcome_assessments")
 }
 

@@ -76,8 +76,10 @@ export class AdminCmsService {
     if (clash) throw new ConflictException(`Phase order ${dto.order} is already used in this template`);
     return this.prisma.phase.create({
       data: {
-        ...dto,
         protocolTemplateId,
+        order: dto.order,
+        name: dto.name,
+        description: dto.description,
         entryCriteria: dto.entryCriteria as Prisma.InputJsonValue,
         exitCriteria: dto.exitCriteria as Prisma.InputJsonValue,
       },
@@ -96,7 +98,9 @@ export class AdminCmsService {
     return this.prisma.phase.update({
       where: { id },
       data: {
-        ...dto,
+        order: dto.order,
+        name: dto.name,
+        description: dto.description,
         entryCriteria: dto.entryCriteria as Prisma.InputJsonValue | undefined,
         exitCriteria: dto.exitCriteria as Prisma.InputJsonValue | undefined,
       },
@@ -126,7 +130,18 @@ export class AdminCmsService {
     });
     if (existing) throw new ConflictException('This exercise is already assigned to this phase');
 
-    return this.prisma.phaseExercise.create({ data: { ...dto, phaseId }, include: { exercise: true } });
+    return this.prisma.phaseExercise.create({
+      data: {
+        phaseId,
+        exerciseId: dto.exerciseId,
+        order: dto.order,
+        sets: dto.sets,
+        reps: dto.reps,
+        holdTimeSeconds: dto.holdTimeSeconds,
+        notes: dto.notes,
+      },
+      include: { exercise: true },
+    });
   }
 
   async updatePhaseExercise(id: string, dto: UpdatePhaseExerciseDto) {
@@ -211,7 +226,15 @@ export class AdminCmsService {
     if (existing) throw new ConflictException('This exercise is already assigned to this program');
 
     return this.prisma.performanceProgramExercise.create({
-      data: { ...dto, templateId },
+      data: {
+        templateId,
+        exerciseId: dto.exerciseId,
+        order: dto.order,
+        sets: dto.sets,
+        reps: dto.reps,
+        holdTimeSeconds: dto.holdTimeSeconds,
+        notes: dto.notes,
+      },
       include: { exercise: true },
     });
   }

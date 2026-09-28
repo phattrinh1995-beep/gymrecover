@@ -18,9 +18,16 @@ export function AdminTemplatesPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const load = () => {
     if (!user) return;
-    apiFetch<AdminProtocolTemplate[]>(user, '/admin/protocol-templates').then(setTemplates);
+    apiFetch<AdminProtocolTemplate[]>(user, '/admin/protocol-templates')
+      .then((t) => {
+        setTemplates(t);
+        setLoadError(null);
+      })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Could not load protocol templates.'));
   };
 
   useEffect(load, [user]);
@@ -78,6 +85,9 @@ export function AdminTemplatesPage() {
         </div>
         {error && <p className="error">{error}</p>}
       </div>
+
+      {loadError && <p className="error">{loadError}</p>}
+      {!templates && !loadError && <p>Loading…</p>}
 
       <table className="table">
         <thead>

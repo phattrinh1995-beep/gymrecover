@@ -22,7 +22,9 @@ export function OrganizationPage() {
 
   const load = () => {
     if (!user) return;
-    apiFetch<Organization | null>(user, '/organizations/mine').then(setOrg);
+    apiFetch<Organization | null>(user, '/organizations/mine')
+      .then(setOrg)
+      .catch(() => setError('Could not load your organization. Please refresh the page.'));
   };
 
   useEffect(load, [user]);
@@ -66,7 +68,13 @@ export function OrganizationPage() {
     load();
   };
 
-  if (org === undefined) return <div className="page">Loading…</div>;
+  if (org === undefined) {
+    return (
+      <div className="page">
+        {error ? <p className="error">{error}</p> : <p>Loading…</p>}
+      </div>
+    );
+  }
 
   if (org === null) {
     return (

@@ -17,9 +17,16 @@ export function AdminPerformanceProgramsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const load = () => {
     if (!user) return;
-    apiFetch<AdminPerformanceProgramTemplate[]>(user, '/admin/performance-programs').then(setTemplates);
+    apiFetch<AdminPerformanceProgramTemplate[]>(user, '/admin/performance-programs')
+      .then((t) => {
+        setTemplates(t);
+        setLoadError(null);
+      })
+      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Could not load performance programs.'));
   };
 
   useEffect(load, [user]);
@@ -65,6 +72,9 @@ export function AdminPerformanceProgramsPage() {
         </div>
         {error && <p className="error">{error}</p>}
       </div>
+
+      {loadError && <p className="error">{loadError}</p>}
+      {!templates && !loadError && <p>Loading…</p>}
 
       <table className="table">
         <thead>

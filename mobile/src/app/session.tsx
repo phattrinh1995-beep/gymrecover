@@ -43,6 +43,7 @@ export default function SessionScreen() {
   const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [session, setSession] = useState<TodaySessionResponse | null>(null);
   const [completedIds, setCompletedIds] = useState<Record<string, boolean>>({});
   const [restingId, setRestingId] = useState<string | null>(null);
@@ -58,6 +59,7 @@ export default function SessionScreen() {
     if (!user || !programInstanceId) return;
     apiFetch<TodaySessionResponse>(user, `/program-instances/${programInstanceId}/today-session`)
       .then(setSession)
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, [user, programInstanceId]);
 
@@ -125,6 +127,17 @@ export default function SessionScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <ActivityIndicator style={styles.spinner} />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.body}>Could not load today's session. Please check your connection and try again.</Text>
+          <PrimaryButton label="Back to Home" onPress={() => router.replace('/home')} />
+        </View>
       </SafeAreaView>
     );
   }

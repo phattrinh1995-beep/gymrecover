@@ -16,14 +16,20 @@ export default function HomeScreen() {
   const { user, logout } = useAuth();
   const [me, setMe] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [startingWorkout, setStartingWorkout] = useState(false);
 
-  useEffect(() => {
+  const loadMe = () => {
     if (!user) return;
+    setLoading(true);
+    setLoadError(false);
     apiFetch<MeResponse>(user, '/users/me')
       .then(setMe)
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, [user]);
+  };
+
+  useEffect(loadMe, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -48,6 +54,18 @@ export default function HomeScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <ActivityIndicator style={styles.spinner} />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.body}>Could not load your account. Please check your connection and try again.</Text>
+        <PrimaryButton label="Retry" onPress={loadMe} />
+        <Text style={styles.logout} onPress={handleLogout}>
+          Log out (dev)
+        </Text>
       </SafeAreaView>
     );
   }

@@ -54,8 +54,14 @@ export function AdminTemplateDetailPage() {
 
   const load = () => {
     if (!user || !templateId) return;
-    apiFetch<AdminProtocolTemplate>(user, `/admin/protocol-templates/${templateId}`).then(setTemplate);
-    apiFetch<AdminExercise[]>(user, '/admin/exercises').then(setExercises);
+    apiFetch<AdminProtocolTemplate>(user, `/admin/protocol-templates/${templateId}`)
+      .then(setTemplate)
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this template.'));
+    apiFetch<AdminExercise[]>(user, '/admin/exercises')
+      .then(setExercises)
+      .catch(() => {
+        /* Exercise catalog failing to load only disables the "add exercise" picker below. */
+      });
   };
 
   useEffect(load, [user, templateId]);
@@ -81,7 +87,13 @@ export function AdminTemplateDetailPage() {
 
   const deletePhase = (id: string) => runAction(() => apiFetch(user!, `/admin/phases/${id}`, { method: 'DELETE' }));
 
-  if (!template) return <div className="page">Loading…</div>;
+  if (!template) {
+    return (
+      <div className="page">
+        {error ? <p className="error">{error}</p> : <p>Loading…</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="page">

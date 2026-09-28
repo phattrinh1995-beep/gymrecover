@@ -18,21 +18,24 @@ export class OrganizationsService {
       throw new ConflictException('You already belong to an organization');
     }
 
-    const org = await this.prisma.organization.create({
-      data: {
-        name: dto.name,
-        type: dto.type,
-        subscription: { create: {} }, // schema defaults: plan TRIAL, status TRIALING, 1 seat
-      },
-      include: { subscription: true },
+    // Atomic: an org must never exist without its creator becoming ORG_ADMIN of it. Uses an
+    // interactive transaction (rather than the array form) because the second write needs the
+    // first write's generated org.id.
+    return this.prisma.$transaction(async (tx) => {
+      const org = await tx.organization.create({
+        data: {
+          name: dto.name,
+          type: dto.type,
+          subscription: { create: {} }, // schema defaults: plan TRIAL, status TRIALING, 1 seat
+        },
+        include: { subscription: true },
+      });
+      await tx.user.update({
+        where: { id: userId },
+        data: { organizationId: org.id, role: 'ORG_ADMIN' },
+      });
+      return org;
     });
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { organizationId: org.id, role: 'ORG_ADMIN' },
-    });
-
-    return org;
   }
 
   async getMyOrganization(userId: string) {
