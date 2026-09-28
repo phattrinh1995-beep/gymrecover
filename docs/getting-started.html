@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Running GymRecover</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FAFBFD;
+    --surface:#FFFFFF;
+    --surface-2:#F2F5FA;
+    --text:#12172B;
+    --text-muted:#5B6478;
+    --border:#E3E7F0;
+    --accent:#2A6DF4;
+    --accent-ink:#1746B3;
+    --accent-soft:#EAF1FF;
+    --success:#1E7A34;
+    --success-soft:#E7F5EA;
+    --warn:#8A5A00;
+    --warn-soft:#FFF4E1;
+    --danger:#B3261E;
+    --danger-soft:#FDECEA;
+    --code-bg:#10162B;
+    --code-text:#DCE6FF;
+    --code-muted:#8496C4;
+    --shadow:0 1px 2px rgba(18,23,43,0.04),0 8px 24px rgba(18,23,43,0.06);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0B0E1A;
+      --surface:#12162A;
+      --surface-2:#171C33;
+      --text:#EDEFF8;
+      --text-muted:#9CA5C4;
+      --border:#262C46;
+      --accent:#6E9BFF;
+      --accent-ink:#CFE0FF;
+      --accent-soft:#1B2A52;
+      --success:#7BD79A;
+      --success-soft:#123322;
+      --warn:#F4C568;
+      --warn-soft:#3A2C0C;
+      --danger:#F29A93;
+      --danger-soft:#3A1614;
+      --code-bg:#080B16;
+      --code-text:#DCE6FF;
+      --code-muted:#7382AC;
+      --shadow:0 1px 2px rgba(0,0,0,0.3),0 8px 24px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0B0E1A;
+    --surface:#12162A;
+    --surface-2:#171C33;
+    --text:#EDEFF8;
+    --text-muted:#9CA5C4;
+    --border:#262C46;
+    --accent:#6E9BFF;
+    --accent-ink:#CFE0FF;
+    --accent-soft:#1B2A52;
+    --success:#7BD79A;
+    --success-soft:#123322;
+    --warn:#F4C568;
+    --warn-soft:#3A2C0C;
+    --danger:#F29A93;
+    --danger-soft:#3A1614;
+    --code-bg:#080B16;
+    --code-text:#DCE6FF;
+    --code-muted:#7382AC;
+    --shadow:0 1px 2px rgba(0,0,0,0.3),0 8px 24px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Source Sans 3", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size:16px;
+    line-height:1.6;
+    padding-inline:16px;
+  }
+  h1,h2,h3{
+    font-family:"Plus Jakarta Sans", sans-serif;
+    line-height:1.2;
+    text-wrap:balance;
+    color:var(--text);
+  }
+  a{ color:var(--accent-ink); }
+  code, .mono{
+    font-family:"JetBrains Mono", ui-monospace, monospace;
+  }
+
+  .shell{ max-width:1180px; margin:0 auto; }
+
+  /* ---------- Header ---------- */
+  .masthead{
+    padding-block:40px 28px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    font-weight:600;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--accent-ink);
+    background:var(--accent-soft);
+    padding:6px 12px;
+    border-radius:999px;
+    width:fit-content;
+  }
+  .masthead h1{ font-size:clamp(28px,4vw,42px); font-weight:800; margin:0; }
+  .masthead p{ font-size:17px; color:var(--text-muted); max-width:62ch; margin:0; }
+  .meta-row{
+    display:flex; flex-wrap:wrap; gap:10px 22px; margin-top:6px;
+    font-size:14px; color:var(--text-muted);
+  }
+  .meta-row span{ display:inline-flex; align-items:center; gap:6px; }
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:240px 1fr;
+    gap:40px;
+    padding-block:32px 80px;
+    align-items:start;
+  }
+  @media (max-width:860px){
+    .layout{ grid-template-columns:1fr; }
+  }
+
+  nav.toc{
+    position:sticky; top:20px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:18px;
+    box-shadow:var(--shadow);
+  }
+  nav.toc h2{ font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin:0 0 10px; }
+  nav.toc ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:2px; counter-reset:toc; }
+  nav.toc li{ counter-increment:toc; }
+  nav.toc a{
+    display:flex; gap:8px; align-items:baseline;
+    text-decoration:none; color:var(--text);
+    font-size:14px; padding:7px 8px; border-radius:8px;
+  }
+  nav.toc a:hover{ background:var(--surface-2); }
+  nav.toc a::before{
+    content:counter(toc);
+    font-family:"JetBrains Mono",monospace;
+    font-size:12px; color:var(--accent-ink);
+    background:var(--accent-soft);
+    width:20px; height:20px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    flex:none;
+  }
+  .toc-progress{
+    margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
+    font-size:13px; color:var(--text-muted);
+  }
+  .toc-progress b{ color:var(--text); }
+
+  details.mobile-toc{
+    display:none;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:14px 16px;
+    margin-bottom:28px;
+  }
+  details.mobile-toc summary{ font-weight:600; cursor:pointer; font-family:"Plus Jakarta Sans",sans-serif; }
+  details.mobile-toc ol{ margin:12px 0 0; padding-left:20px; }
+  details.mobile-toc a{ color:var(--accent-ink); }
+  @media (max-width:860px){
+    nav.toc{ display:none; }
+    details.mobile-toc{ display:block; }
+  }
+
+  main{ min-width:0; display:flex; flex-direction:column; gap:56px; }
+
+  section{ scroll-margin-top:18px; }
+  .step-head{ display:flex; gap:14px; align-items:flex-start; margin-bottom:14px; }
+  .step-num{
+    font-family:"JetBrains Mono",monospace;
+    font-weight:600;
+    font-size:14px;
+    color:var(--accent-ink);
+    background:var(--accent-soft);
+    border-radius:10px;
+    width:36px; height:36px;
+    display:flex; align-items:center; justify-content:center;
+    flex:none;
+  }
+  section h2{ font-size:23px; font-weight:700; margin:0 0 4px; }
+  section .step-sub{ color:var(--text-muted); font-size:15px; margin:0; }
+  .step-check{
+    margin-left:auto; display:flex; align-items:center; gap:8px;
+    font-size:13px; color:var(--text-muted); white-space:nowrap; padding-top:6px;
+  }
+  .step-check input{ width:17px; height:17px; accent-color:var(--accent); }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:22px 24px;
+    box-shadow:var(--shadow);
+  }
+  .card + .card{ margin-top:14px; }
+  .card h3{ font-size:16px; margin:0 0 8px; }
+  .card p{ margin:0 0 10px; }
+  .card p:last-child{ margin-bottom:0; }
+  .card ul, .card ol{ margin:0 0 10px; padding-left:22px; }
+  .card li{ margin-bottom:6px; }
+
+  .callout{
+    display:flex; gap:12px;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:14.5px;
+    border:1px solid transparent;
+  }
+  .callout b{ font-family:"Plus Jakarta Sans",sans-serif; }
+  .callout .icon{ flex:none; font-size:18px; line-height:1.4; }
+  .callout.tip{ background:var(--accent-soft); border-color:color-mix(in srgb, var(--accent) 30%, transparent); }
+  .callout.warn{ background:var(--warn-soft); border-color:color-mix(in srgb, var(--warn) 35%, transparent); }
+  .callout.done{ background:var(--success-soft); border-color:color-mix(in srgb, var(--success) 35%, transparent); }
+  .callout.danger{ background:var(--danger-soft); border-color:color-mix(in srgb, var(--danger) 35%, transparent); }
+
+  .codeblock{
+    background:var(--code-bg);
+    border-radius:12px;
+    overflow:hidden;
+    margin:12px 0;
+    box-shadow:var(--shadow);
+  }
+  .codeblock .bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 14px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+  }
+  .codeblock .bar .label{
+    font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--code-muted);
+    display:flex; align-items:center; gap:8px;
+  }
+  .dots{ display:flex; gap:5px; }
+  .dots span{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .dots span:nth-child(1){ background:#ff5f57; }
+  .dots span:nth-child(2){ background:#febc2e; }
+  .dots span:nth-child(3){ background:#28c840; }
+  .copy-btn{
+    font-family:"Source Sans 3",sans-serif;
+    font-size:12.5px; font-weight:600;
+    color:var(--code-text);
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:7px;
+    padding:5px 10px;
+    cursor:pointer;
+  }
+  .copy-btn:hover{ background:rgba(255,255,255,0.16); }
+  .copy-btn.copied{ background:color-mix(in srgb, var(--success) 40%, transparent); }
+  .codeblock pre{
+    margin:0; padding:14px 16px 16px;
+    overflow-x:auto;
+    font-family:"JetBrains Mono",monospace;
+    font-size:13.5px;
+    color:var(--code-text);
+    line-height:1.65;
+  }
+  .codeblock pre .c{ color:var(--code-muted); }
+
+  table{ width:100%; border-collapse:collapse; font-size:14.5px; }
+  th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th{ font-family:"Plus Jakarta Sans",sans-serif; font-size:12.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--text-muted); }
+  .table-wrap{ overflow-x:auto; }
+
+  kbd{
+    font-family:"JetBrains Mono",monospace;
+    font-size:12.5px;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-bottom-width:2px;
+    border-radius:6px;
+    padding:2px 6px;
+  }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:999px; padding:4px 10px; font-size:12.5px; color:var(--text-muted);
+  }
+
+  .three-col{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  @media (max-width:700px){ .three-col{ grid-template-columns:1fr; } }
+  .app-card{ background:var(--surface-2); border:1px solid var(--border); border-radius:12px; padding:16px; }
+  .app-card .tag{ font-family:"JetBrains Mono",monospace; font-size:12px; color:var(--accent-ink); }
+  .app-card h4{ margin:6px 0 4px; font-family:"Plus Jakarta Sans",sans-serif; font-size:15px; }
+  .app-card p{ margin:0; font-size:13.5px; color:var(--text-muted); }
+
+  details.qa{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:4px 18px;
+  }
+  details.qa + details.qa{ margin-top:10px; }
+  details.qa summary{
+    font-family:"Plus Jakarta Sans",sans-serif;
+    font-weight:600;
+    padding:14px 0;
+    cursor:pointer;
+    list-style:none;
+  }
+  details.qa summary::-webkit-details-marker{ display:none; }
+  details.qa summary::before{ content:"+ "; color:var(--accent-ink); font-family:"JetBrains Mono",monospace; }
+  details.qa[open] summary::before{ content:"– "; }
+  details.qa .qa-body{ padding-bottom:16px; color:var(--text-muted); font-size:14.5px; }
+  details.qa .qa-body p{ margin:0 0 8px; }
+
+  footer{
+    border-top:1px solid var(--border);
+    padding-block:26px 40px;
+    color:var(--text-muted);
+    font-size:13.5px;
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="masthead">
+    <span class="eyebrow">Zero coding experience required</span>
+    <h1>Running GymRecover on your own computer</h1>
+    <p>This walks you through everything, starting from the GitHub page, through downloading the
+      code, installing the tools it needs, and starting up all three parts of the app. Follow the
+      steps in order — nothing here assumes you've done this before.</p>
+    <div class="meta-row">
+      <span>⏱️ About 45–60 minutes</span>
+      <span>💻 Windows or Mac</span>
+      <span>🔗 <a href="https://github.com/phattrinh1995-beep/gymrecover" target="_blank" rel="noopener">github.com/phattrinh1995-beep/gymrecover</a></span>
+    </div>
+  </header>
+
+  <details class="mobile-toc">
+    <summary>Jump to a section</summary>
+    <ol id="mobile-toc-list"></ol>
+  </details>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Table of contents">
+      <h2>On this page</h2>
+      <ol id="toc-list"></ol>
+      <div class="toc-progress"><b id="progress-count">0</b> of <span id="progress-total">0</span> steps checked off</div>
+    </nav>
+
+    <main>
+
+      <section id="concepts">
+        <div class="step-head">
+          <h2 style="margin-bottom:0">First, a few words you'll keep seeing</h2>
+        </div>
+        <p class="step-sub" style="margin-bottom:14px">Skip this if you already know what a terminal or a repository is.</p>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <tr><th>Word</th><th>What it means here</th></tr>
+              <tr><td><b>Repository</b> ("repo")</td><td>A project's folder of code, stored on GitHub. GymRecover's repo is at the link above.</td></tr>
+              <tr><td><b>Clone</b></td><td>Downloading a copy of a repository onto your own computer.</td></tr>
+              <tr><td><b>Terminal</b></td><td>A window where you type text commands instead of clicking buttons. On Windows it's called <b>PowerShell</b>; on a Mac it's called <b>Terminal</b>.</td></tr>
+              <tr><td><b>Command</b></td><td>A line of text you type into the terminal and press <kbd>Enter</kbd> to run.</td></tr>
+              <tr><td><b>Package / dependency</b></td><td>A piece of code someone else wrote that this project uses. <span class="mono">npm install</span> downloads all of them for you.</td></tr>
+              <tr><td><b><span class="mono">.env</span> file</b></td><td>A small text file holding settings for your own computer, like which port to use. Each app has a template called <span class="mono">.env.example</span> you copy from.</td></tr>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="overview">
+        <div class="step-head">
+          <h2 style="margin-bottom:0">What you're about to set up</h2>
+        </div>
+        <p class="step-sub" style="margin-bottom:14px">GymRecover is three separate programs that all talk to each other. You'll start all three, each in its own terminal window.</p>
+        <div class="three-col">
+          <div class="app-card">
+            <span class="tag">backend/</span>
+            <h4>The server</h4>
+            <p>Stores all the data and does all the logic. The other two apps can't work without this one running.</p>
+          </div>
+          <div class="app-card">
+            <span class="tag">mobile/</span>
+            <h4>The phone app</h4>
+            <p>What a patient or gym member would use. Runs in your web browser for this guide, no phone needed.</p>
+          </div>
+          <div class="app-card">
+            <span class="tag">web/</span>
+            <h4>The provider portal</h4>
+            <p>What a clinician or admin would use. Also runs in your browser.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="step-tools">
+        <div class="step-head">
+          <span class="step-num">1</span>
+          <div>
+            <h2>Install the tools this project needs</h2>
+            <p class="step-sub">Two programs, both free. Install them before anything else.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="tools"> Done</label>
+        </div>
+
+        <div class="card">
+          <h3>Node.js — runs the code</h3>
+          <ol>
+            <li>Go to <a href="https://nodejs.org" target="_blank" rel="noopener">nodejs.org</a>.</li>
+            <li>Click the button offering the <b>LTS</b> version (LTS = "Long Term Support" — the stable one).</li>
+            <li>Open the file you downloaded and click through the installer with the default options.</li>
+          </ol>
+          <div class="callout tip"><span class="icon">💡</span><div><b>Check it worked:</b> open a terminal (see below) and type <span class="mono">node --version</span>. If you see something like <span class="mono">v20.11.0</span>, you're set.</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Git — downloads the code from GitHub</h3>
+          <ol>
+            <li>Go to <a href="https://git-scm.com/downloads" target="_blank" rel="noopener">git-scm.com/downloads</a>.</li>
+            <li>Download the installer for your operating system and run it, default options are fine.</li>
+          </ol>
+          <div class="callout tip"><span class="icon">💡</span><div><b>Check it worked:</b> in a terminal, type <span class="mono">git --version</span>. Any version number means it's installed.</div></div>
+        </div>
+
+        <div class="card">
+          <h3>How to open a terminal</h3>
+          <div class="table-wrap">
+            <table>
+              <tr><th>Windows</th><td>Click the Start menu, type <b>PowerShell</b>, press <kbd>Enter</kbd>.</td></tr>
+              <tr><th>Mac</th><td>Press <kbd>Cmd</kbd>+<kbd>Space</kbd>, type <b>Terminal</b>, press <kbd>Enter</kbd>.</td></tr>
+            </table>
+          </div>
+          <p style="margin-top:10px">Every gray box with a <b>Copy</b> button below is a command — click Copy, click into your terminal window, paste it (<kbd>Ctrl</kbd>+<kbd>V</kbd> or <kbd>Cmd</kbd>+<kbd>V</kbd>), and press <kbd>Enter</kbd>.</p>
+        </div>
+      </section>
+
+      <section id="step-github">
+        <div class="step-head">
+          <span class="step-num">2</span>
+          <div>
+            <h2>Get access to the GitHub repository</h2>
+            <p class="step-sub">This repository is private, so you need to be signed in as an invited collaborator.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="github"> Done</label>
+        </div>
+        <div class="card">
+          <ol>
+            <li>If you don't have a GitHub account yet, create one free at <a href="https://github.com/signup" target="_blank" rel="noopener">github.com/signup</a>.</li>
+            <li>Ask whoever owns the project to add your GitHub username as a <b>collaborator</b> on the repository (GitHub → repo → Settings → Collaborators).</li>
+            <li>Once added, you'll get an email invite — accept it.</li>
+            <li>Visit <a href="https://github.com/phattrinh1995-beep/gymrecover" target="_blank" rel="noopener">the repository page</a> and confirm you can see the file list (not a "404" or "access denied" page).</li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="step-clone">
+        <div class="step-head">
+          <span class="step-num">3</span>
+          <div>
+            <h2>Download the code to your computer</h2>
+            <p class="step-sub">This is called "cloning" — it copies the whole repository into a folder.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="clone"> Done</label>
+        </div>
+        <div class="card">
+          <p>Open a terminal and go to wherever you'd like the project folder to live — for example your Desktop:</p>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre><span class="c"># Windows (PowerShell)</span>
+cd Desktop
+<span class="c"># Mac</span>
+cd ~/Desktop</pre>
+          </div>
+          <p>Then clone the repository (this uses HTTPS, so the first time you clone or push, Git may open a browser window asking you to sign in to GitHub — go ahead and sign in there):</p>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>git clone https://github.com/phattrinh1995-beep/gymrecover.git
+cd gymrecover</pre>
+          </div>
+          <div class="callout done"><span class="icon">✅</span><div>You now have a folder called <span class="mono">gymrecover</span> with three subfolders inside: <span class="mono">backend</span>, <span class="mono">mobile</span>, and <span class="mono">web</span>.</div></div>
+        </div>
+      </section>
+
+      <section id="step-backend">
+        <div class="step-head">
+          <span class="step-num">4</span>
+          <div>
+            <h2>Set up and start the backend</h2>
+            <p class="step-sub">Do this first — the other two apps need it running.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="backend"> Done</label>
+        </div>
+
+        <div class="card">
+          <h3>4a. Install its packages</h3>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>cd backend
+npm install</pre>
+          </div>
+          <p>This downloads everything the backend needs. It can take a couple of minutes and prints a lot of text — that's normal.</p>
+        </div>
+
+        <div class="card">
+          <h3>4b. Create your settings file</h3>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre><span class="c"># Windows (PowerShell)</span>
+copy .env.example .env
+<span class="c"># Mac</span>
+cp .env.example .env</pre>
+          </div>
+          <p>Open the new <span class="mono">.env</span> file in any text editor (Notepad works fine) and leave everything as-is for local testing — the defaults are made to work out of the box, including <span class="mono">AUTH_DEV_BYPASS=true</span>, which lets you sign in without setting up a real login system.</p>
+          <div class="callout warn"><span class="icon">⚠️</span><div><b>Never</b> set <span class="mono">AUTH_DEV_BYPASS</span> to true anywhere other than your own computer — it's explicitly blocked from running that way in production.</div></div>
+        </div>
+
+        <div class="card">
+          <h3>4c. Start a local database</h3>
+          <p>This project uses a database called PostgreSQL, and includes a way to run a temporary
+            one locally with a single command — no separate install needed:</p>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>npx prisma dev</pre>
+          </div>
+          <p>Leave this running — it'll print some connection info and then sit quietly. Open a
+            <b>new</b> terminal window for every step from here on, and use <span class="mono">cd</span> to get back into the
+            <span class="mono">gymrecover/backend</span> folder each time.</p>
+        </div>
+
+        <div class="card">
+          <h3>4d. Set up the tables and load sample content</h3>
+          <p>In your new terminal window, back inside the <span class="mono">backend</span> folder:</p>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>npx prisma migrate deploy
+npm run seed</pre>
+          </div>
+          <p>The first command creates all the database tables. The second loads sample (placeholder) exercises and recovery programs so the app isn't empty.</p>
+        </div>
+
+        <div class="card">
+          <h3>4e. Start the backend</h3>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>npm run start:dev</pre>
+          </div>
+          <div class="callout done"><span class="icon">✅</span><div>You'll see log lines ending with something like <span class="mono">Nest application successfully started</span>. Leave this terminal window open and running the whole time you're using the app.</div></div>
+        </div>
+      </section>
+
+      <section id="step-mobile">
+        <div class="step-head">
+          <span class="step-num">5</span>
+          <div>
+            <h2>Set up and start the mobile app</h2>
+            <p class="step-sub">Open a brand-new terminal window for this — keep the backend one running.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="mobile"> Done</label>
+        </div>
+        <div class="card">
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre><span class="c"># from the gymrecover folder</span>
+cd mobile
+npm install
+<span class="c"># Windows</span>
+copy .env.example .env
+<span class="c"># Mac</span>
+cp .env.example .env
+npm run web</pre>
+          </div>
+          <p>After a short wait, this opens the app in your default web browser automatically. If it doesn't, it'll print a web address (something like <span class="mono">http://localhost:8081</span>) — open that yourself.</p>
+        </div>
+      </section>
+
+      <section id="step-web">
+        <div class="step-head">
+          <span class="step-num">6</span>
+          <div>
+            <h2>Set up and start the provider portal</h2>
+            <p class="step-sub">Another new terminal window, same idea.</p>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="web"> Done</label>
+        </div>
+        <div class="card">
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre><span class="c"># from the gymrecover folder</span>
+cd web
+npm install
+<span class="c"># Windows</span>
+copy .env.example .env
+<span class="c"># Mac</span>
+cp .env.example .env
+npm run dev</pre>
+          </div>
+          <p>This prints a local web address, usually <span class="mono">http://localhost:5173</span> — open it in your browser.</p>
+        </div>
+      </section>
+
+      <section id="step-try">
+        <div class="step-head">
+          <span class="step-num">7</span>
+          <div>
+            <h2>Try it out</h2>
+          </div>
+          <label class="step-check"><input type="checkbox" data-step="try"> Done</label>
+        </div>
+        <div class="card">
+          <h3>As a member (mobile app, in your browser)</h3>
+          <p>On the mobile app's page, tap <b>Get Started</b> and enter any name and email — this
+            local setup has no real login system, so it creates an account for you instantly.
+            Walk through the questions to see the onboarding flow.</p>
+        </div>
+        <div class="card">
+          <h3>As an admin (provider portal, in your browser)</h3>
+          <p>Sign in the same way on the web portal. To see the content-management screens, give
+            your account admin rights from a terminal (in the <span class="mono">backend</span> folder):</p>
+          <div class="codeblock">
+            <div class="bar"><span class="label"><span class="dots"><span></span><span></span><span></span></span>terminal</span><button class="copy-btn" type="button">Copy</button></div>
+            <pre>npx tsx prisma/dev-grant-super-admin.ts you@example.com</pre>
+          </div>
+          <p>Use the exact email you signed in with, then refresh the portal page.</p>
+        </div>
+      </section>
+
+      <section id="reference">
+        <div class="step-head">
+          <h2 style="margin-bottom:0">Quick reference</h2>
+        </div>
+        <p class="step-sub" style="margin-bottom:14px">Once everything's installed, this is all you need for future sessions — three terminal windows, one command each.</p>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <tr><th>Window</th><th>Folder</th><th>Command</th><th>Address</th></tr>
+              <tr><td>1. Database</td><td><span class="mono">backend</span></td><td><span class="mono">npx prisma dev</span></td><td>—</td></tr>
+              <tr><td>2. Backend</td><td><span class="mono">backend</span></td><td><span class="mono">npm run start:dev</span></td><td>localhost:3000 or 3001</td></tr>
+              <tr><td>3. Mobile app</td><td><span class="mono">mobile</span></td><td><span class="mono">npm run web</span></td><td>localhost:8081</td></tr>
+              <tr><td>4. Provider portal</td><td><span class="mono">web</span></td><td><span class="mono">npm run dev</span></td><td>localhost:5173</td></tr>
+            </table>
+          </div>
+          <p style="margin-top:12px">To stop any of them, click into that terminal window and press <kbd>Ctrl</kbd>+<kbd>C</kbd>.</p>
+        </div>
+      </section>
+
+      <section id="troubleshooting">
+        <div class="step-head">
+          <h2 style="margin-bottom:0">If something goes wrong</h2>
+        </div>
+        <div style="margin-top:14px; display:flex; flex-direction:column; gap:0;">
+          <details class="qa">
+            <summary>"node" / "npm" / "git" is not recognized</summary>
+            <div class="qa-body"><p>The tool didn't finish installing, or you opened your terminal before installing it. Close the terminal window completely, reopen a new one, and try again — Windows and Mac only pick up newly installed programs in fresh terminal windows.</p></div>
+          </details>
+          <details class="qa">
+            <summary>"Port already in use" when starting something</summary>
+            <div class="qa-body"><p>Something else on your computer is already using that address, often a leftover copy of the same app from before. Find and close any terminal windows still running an earlier <span class="mono">npm run …</span> command, or restart your computer.</p></div>
+          </details>
+          <details class="qa">
+            <summary>The mobile app or portal shows a blank page or can't reach the server</summary>
+            <div class="qa-body"><p>Make sure all four windows from the Quick Reference table above are still running — closing the terminal (or the window) stops that piece of the app. Check the <span class="mono">.env</span> file in <span class="mono">mobile</span> or <span class="mono">web</span> points at the same address your backend printed on startup.</p></div>
+          </details>
+          <details class="qa">
+            <summary>Git asks for a username and password</summary>
+            <div class="qa-body"><p>GitHub no longer accepts plain passwords here. Let Git open the browser sign-in window instead (it usually does this automatically on first clone) — sign in there once and it's remembered.</p></div>
+          </details>
+          <details class="qa">
+            <summary>I closed the "database" terminal window by accident</summary>
+            <div class="qa-body"><p>Open a new terminal, go back into the <span class="mono">backend</span> folder, and run <span class="mono">npx prisma dev</span> again — your data is saved and will still be there.</p></div>
+          </details>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    Full technical write-up of what's built, what's placeholder, and what's left to do lives in
+    <span class="mono">PROGRESS.md</span> in the repository.
+  </footer>
+</div>
+
+<script>
+(function(){
+  // Build table of contents from sections that have an h2
+  var sections = Array.prototype.slice.call(document.querySelectorAll('main > section'));
+  var tocList = document.getElementById('toc-list');
+  var mobileTocList = document.getElementById('mobile-toc-list');
+  sections.forEach(function(sec){
+    var h2 = sec.querySelector('h2');
+    if(!h2) return;
+    var li = document.createElement('li');
+    var a = document.createElement('a');
+    a.href = '#' + sec.id;
+    a.textContent = h2.textContent;
+    li.appendChild(a);
+    tocList.appendChild(li);
+
+    var mli = document.createElement('li');
+    var ma = document.createElement('a');
+    ma.href = '#' + sec.id;
+    ma.textContent = h2.textContent;
+    mli.appendChild(ma);
+    mobileTocList.appendChild(mli);
+  });
+
+  // Copy buttons
+  document.querySelectorAll('.copy-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var pre = btn.closest('.codeblock').querySelector('pre');
+      var text = pre.innerText;
+      function done(){
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(function(){ btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+      }
+      try{
+        navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(pre); done(); });
+      }catch(e){
+        fallbackCopy(pre); done();
+      }
+    });
+  });
+  function fallbackCopy(pre){
+    var range = document.createRange();
+    range.selectNodeContents(pre);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  // Step checkboxes persisted per-viewer
+  var checkboxes = document.querySelectorAll('[data-step]');
+  var STORAGE_KEY = 'gymrecover-guide-progress';
+  var state = {};
+  try{ state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }catch(e){ state = {}; }
+
+  function updateProgress(){
+    var total = checkboxes.length;
+    var checked = 0;
+    checkboxes.forEach(function(cb){ if(cb.checked) checked++; });
+    document.getElementById('progress-count').textContent = checked;
+    document.getElementById('progress-total').textContent = total;
+  }
+
+  checkboxes.forEach(function(cb){
+    var key = cb.getAttribute('data-step');
+    try{ cb.checked = !!state[key]; }catch(e){}
+    cb.addEventListener('change', function(){
+      try{
+        state[key] = cb.checked;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }catch(e){}
+      updateProgress();
+    });
+  });
+  updateProgress();
+})();
+</script>
+</body>
+</html>

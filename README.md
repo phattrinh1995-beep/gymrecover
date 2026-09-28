@@ -12,6 +12,11 @@ logged criteria, or removes the red-flag safety gate. See [PROGRESS.md](./PROGRE
 full build log, what's real vs. placeholder, and outstanding action items before any real
 deployment.
 
+**New to this project, or new to coding entirely?** [`docs/getting-started.html`](./docs/getting-started.html)
+is a from-scratch, no-experience-required walkthrough — download it and open it in any browser, or
+view it rendered directly on GitHub via
+[htmlpreview](https://htmlpreview.github.io/?https://github.com/phattrinh1995-beep/gymrecover/blob/main/docs/getting-started.html).
+
 ## Repository layout
 
 | App | Path | Stack |
