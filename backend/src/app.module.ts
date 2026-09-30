@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -18,6 +20,11 @@ import { AdminCmsModule } from './admin-cms/admin-cms.module.js';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    // Global API rate limit: 100 requests per IP per minute across every endpoint. Sized for
+    // normal interactive use (mobile/web polling + a session's worth of writes) while still
+    // blocking brute-force/scripted abuse; tighten per-route with @Throttle() if a specific
+    // endpoint (e.g. once real Auth0 login lands) needs a stricter limit.
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]),
     PrismaModule,
     EncryptionModule,
     AuthModule,
@@ -32,6 +39,6 @@ import { AdminCmsModule } from './admin-cms/admin-cms.module.js';
     AdminCmsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {}
