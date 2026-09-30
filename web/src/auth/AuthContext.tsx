@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { AuthUser } from '../types';
+import { AuthContext } from './authContextValue';
 
 /**
  * DEV-ONLY AUTH — same rationale and limitations as mobile/src/auth/AuthContext.tsx: no real
@@ -9,14 +10,6 @@ import type { AuthUser } from '../types';
  */
 
 const STORAGE_KEY = 'gymrecover.providerPortal.devAuthUser';
-
-interface AuthContextValue {
-  user: AuthUser | null;
-  login: (email: string) => void;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function subFromEmail(email: string): string {
   return `dev|${email.trim().toLowerCase()}`;
@@ -37,10 +30,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => setUser(null);
 
   return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }

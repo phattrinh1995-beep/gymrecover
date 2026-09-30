@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import { apiFetch, ApiError } from '../api/client';
 import type { AdminExercise, AdminPerformanceProgramTemplate } from '../types';
 

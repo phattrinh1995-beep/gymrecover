@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useAuth } from './auth/AuthContext';
+import { useAuth } from './auth/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { PatientsListPage } from './pages/PatientsListPage';
 import { PatientDetailPage } from './pages/PatientDetailPage';
